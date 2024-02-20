@@ -20,7 +20,7 @@ const TYPE_ORM_MODULE_OPTIONS: TypeOrmModuleOptions = {
   // must not be synchronize automaticall, use data migration instea
   synchronize: false,
   // migrations
-  migrations: [`${DIRNAME}/database/migrations/*.js`],
+  migrations: [`${DIRNAME}/migrations/*.js`, `${DIRNAME}/migrations/*.ts`],
   migrationsTableName: `${DB_PREFIX}_migrations`,
   // use custom repository
   autoLoadEntities: false,
