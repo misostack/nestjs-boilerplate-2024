@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { CrudRepository } from '@common/repositories/crud/crud.repository';
+import { DeepPartial, Entity, SaveOptions } from 'typeorm';
+
 export class CrudQuery {}
 
 /**
@@ -17,14 +19,19 @@ export interface ICrudService<ID, Dto, Entity, Query extends CrudQuery> {
   delete(query: Query): Promise<boolean>;
 }
 
-@Injectable()
 export abstract class CrudService<ID, Dto, Entity, Query extends CrudQuery>
   implements ICrudService<ID, Dto, Entity, Query>
 {
-  create(object: Dto): Promise<Entity>;
-  create(objects: Dto[]): Promise<Entity[]>;
-  create(objects: unknown): Promise<Entity> | Promise<Entity[]> {
-    throw new Error('Method not implemented.');
+  constructor(private repository: CrudRepository<Entity>) {}
+  create(data: Dto): Promise<Entity>;
+  create(data: Dto[]): Promise<Entity[]>;
+  create(data: unknown): Promise<Entity> | Promise<Entity[]> {
+    if (Array.isArray(data)) {
+      return this.repository.save(data as Entity[]);
+    }
+    if (typeof data == 'object') {
+      return this.repository.save(data as Entity);
+    }
   }
   retrieve(id: ID): Promise<Entity>;
   retrieve(query: Query): Promise<Entity[]>;
@@ -45,3 +52,72 @@ export abstract class CrudService<ID, Dto, Entity, Query extends CrudQuery>
     throw new Error('Method not implemented.');
   }
 }
+
+type ExampleID = number;
+type ExampleQuery = {
+  title: string;
+};
+class ExampleDto {
+  id: ExampleID;
+  title: string;
+}
+
+@Entity()
+class ExampleEntity {}
+class ExampleService extends CrudService<
+  ExampleID,
+  ExampleDto,
+  ExampleEntity,
+  ExampleQuery
+> {}
+
+class ExampleRepository extends CrudRepository<ExampleEntity> {
+  save<T extends DeepPartial<ExampleEntity>>(
+    entities: T[],
+    options: SaveOptions & { reload: false },
+  ): Promise<T[]>;
+  save<T extends DeepPartial<ExampleEntity>>(
+    entities: T[],
+    options?: SaveOptions,
+  ): Promise<(T & ExampleEntity)[]>;
+  save<T extends DeepPartial<ExampleEntity>>(
+    entity: T,
+    options: SaveOptions & { reload: false },
+  ): Promise<T>;
+  save<T extends DeepPartial<ExampleEntity>>(
+    entity: T,
+    options?: SaveOptions,
+  ): Promise<T & ExampleEntity>;
+  save(
+    entity: unknown,
+    options?: unknown,
+  ): Promise<ExampleEntity[]> | Promise<ExampleEntity> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(entity);
+      }, 500);
+    });
+  }
+}
+const exampleRepository: ExampleRepository = new ExampleRepository(null, null);
+
+const exampleService: ExampleService = new ExampleService(exampleRepository);
+
+(async () => {
+  const entity = await exampleService.create({
+    id: 1,
+    title: 'title 1',
+  });
+  console.log(entity);
+  const entities = await exampleService.create([
+    {
+      id: 1,
+      title: 'title1',
+    },
+    {
+      id: 2,
+      title: 'title2',
+    },
+  ]);
+  console.log(entities);
+})();
